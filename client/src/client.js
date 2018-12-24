@@ -17,6 +17,7 @@ const socket = io()
 socket.on('connect', function () {
   // use for ssh connected shell
   socket.emit('standby', xterm.cols, xterm.rows)
+  xterm.clear()
   xterm.writeln('请输入用户名和密码进行登录。')
 })
 
@@ -31,7 +32,7 @@ loginBtn.onclick = function () {
   if (!account || !pw) {
     alert('请输入用户名和密码进行登录')
   } else {
-    xterm.writeln('请稍后，正在登陆...')
+    xterm.writeln('请稍后，正在登录...')
     socket.emit('login', account, pw)
   }
 }
@@ -39,6 +40,7 @@ loginBtn.onclick = function () {
 // wrong ip or port set
 socket.on('invalidateIP', function () {
   xterm.writeln('请检查IP地址或者端口是否设置正确。')
+  xterm.writeln('可尝试在‘高级’面板手动输入IP地址和端口号。')
 })
 
 // server connect success
@@ -51,6 +53,19 @@ socket.on('login', function (success) {
     // disabled login button
     loginBtn.disabled = true
   }
+})
+
+// handle ssh connect event
+socket.on('SSH-ERROR', function (error) {
+  xterm.writeln('连接出现错误，请尝试重新登录。')
+  xterm.writeln(error)
+})
+socket.on('SSH-END', function () {
+  xterm.writeln('连接已经断开。')
+})
+socket.on('SSH-CLOSE', function (hadError) {
+  xterm.writeln(hadError ? '连接因为出现错误而被关闭，请重新登录。' : '连接已经关闭，请重新登录。')
+  // todo 重新登录
 })
 
 // get socket server data

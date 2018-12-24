@@ -60,18 +60,28 @@ io.on('connection', function (socket) {
         socket.emit('data', data.toString('utf8'))
       })
 
-      // ssh2 connect to server success and connect stable
+      // ssh2 connect to server success and authentication was successful and connect stable
       conn.on('ready', function () {
         console.log('connect to server ready!')
         // login success and then client should disable login button
         socket.emit('login', true)
+        // socket server event
+        socket.on('error', function (error) {
+          console.log('socket connect error!', error)
+          conn.end()
+        })
+        socket.on('disconnect', function (reason) {
+          // when page refresh, event fired sequence: disconnecting -> disconnect, so only handle 'disconnect' event
+          console.log('socket connect disconnect!', reason)
+          conn.end()
+        })
 
         conn.shell({
           term: config.shell.term,
           cols: xterm.cols,
           rows: xterm.rows
         }, function (err, stream) {
-          // stream get server data
+          // stream get server data, see node.js stream: http://nodejs.cn/api/stream.html
           stream.on('data', function (data) {
             socket.emit('data', data.toString('utf8'))
           })
@@ -80,21 +90,39 @@ io.on('connection', function (socket) {
           socket.on('data', function (data) {
             stream.write(data)
           })
+
+          // handle stream event: writable && readable
+          stream.on('close', function () {
+            // event fired sequence: finish -> end -> close, so only handle 'close' event
+            // when conn.end() fired, SSH event 'end' will be trigger
+            console.log('stream close!')
+            conn.end()
+          })
+          stream.on('error', function (error) {
+            // when error occur, the stream close not yet
+            console.log('stream error!', error)
+            conn.end()
+          })
         })
       })
 
       // handle something error situation
-      conn.on('error', function (err) {
-        // occur some error
+      conn.on('error', function (error) {
+        // connect occur error
         console.log('connect to server error!')
-      })
-      conn.on('close', function (hadError) {
-        // socket close, if this was due to error, hadError will be set to true
-        console.log('connect to server close!')
+        socket.emit('SSH-ERROR', error)
       })
       conn.on('end', function () {
-        // socket disconnected
+        // connect end, fire sequence: end -> close
+        // when call conn.end(), the 'end' event will be trigger
         console.log('connect to server end!')
+        socket.emit('SSH-END')
+      })
+      conn.on('close', function (hadError) {
+        // connect close, fire sequence: end -> close
+        // when call conn.end(), the 'close' event will be trigger, if this was due to error, hadError will be set to true
+        console.log('connect to server close!', hadError)
+        socket.emit('SSH-CLOSE', hadError)
       })
 
       // connect to server
@@ -110,16 +138,6 @@ io.on('connection', function (socket) {
         algorithms: config.ssh.algorithms
       })
     }
-  })
-  // socket server event
-  socket.on('error', function (error) {
-    console.log('socket connect error!')
-  })
-  socket.on('disconnecting', function (reason) {
-    console.log('socket connect disconnecting!')
-  })
-  socket.on('disconnect', function (reason) {
-    console.log('socket connect disconnect!')
   })
 })
 
