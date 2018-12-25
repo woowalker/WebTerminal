@@ -19,6 +19,9 @@ var validator = require('validator')
 // express option
 app.use(express.static(publicPath))
 
+// hide something about server information
+app.disable('x-powered-by')
+
 // match http url
 var HP = {
   host: config.ssh.host,
@@ -101,6 +104,11 @@ io.on('connection', function (socket) {
           stream.write(data)
         })
 
+        // socket get client resize event
+        socket.on('resize', function (rows, cols) {
+          stream.setWindow(rows, cols)
+        })
+
         // handle stream event: writable && readable
         stream.on('close', function () {
           // event fired sequence: finish -> end -> close, so only handle 'close' event
@@ -119,7 +127,7 @@ io.on('connection', function (socket) {
     // handle something error situation
     conn.on('error', function (error) {
       // connect occur error
-      console.log('connect to server error!')
+      console.log('connect to server error!', error)
       socket.emit('SSH-ERROR', error)
     })
     conn.on('end', function () {
@@ -133,6 +141,10 @@ io.on('connection', function (socket) {
       // when call conn.end(), the 'close' event will be trigger, if this was due to error, hadError will be set to true
       console.log('connect to server close!', hadError)
       socket.emit('SSH-CLOSE', hadError)
+    })
+    conn.on('keyboard-interactive', function (name, instructions, instructionsLang, prompts, finish) {
+      // server asking for a keyboard interactive
+      finish([password])
     })
 
     // connect to server

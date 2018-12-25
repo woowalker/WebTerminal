@@ -174,7 +174,7 @@ body {
   padding: 0;
 }
 #head {
-  width: calc(100% - 12px);
+  width: calc(100% - 24px);
   height: 32px;
   margin: 0 6px;
   line-height: 32px;
@@ -187,6 +187,7 @@ body {
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
+  min-width: 1190px;
 }
 #head form .title {
   margin: 0 6px;

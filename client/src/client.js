@@ -2,6 +2,7 @@
 import io from 'socket.io-client'
 import {Terminal} from 'xterm'
 import {fit} from 'xterm/lib/addons/fit/fit'
+import {detectIE} from './utils'
 import 'xterm/lib/xterm.css'
 import 'xterm/lib/xterm'
 import './client.less'
@@ -10,6 +11,7 @@ const terminal_dom = document.getElementById('terminal')
 const xterm = new Terminal()
 xterm.open(terminal_dom)
 xterm.setOption('lineHeight', 1.5) // set lineHeight should behind 'open'
+xterm.setOption('scrollback', 10000)
 fit(xterm)
 
 // connect to socket
@@ -52,11 +54,13 @@ loginBtn.onclick = function () {
   if (!account || !pw) {
     alert('请输入用户名和密码进行登录')
   } else {
+    const host = document.getElementsByClassName('hostIP')[0].value
+    const port = document.getElementsByClassName('hostPort')[0].value
+
+    xterm.writeln('尝试连接到：' + host + ' 端口：' + port)
     xterm.writeln('请稍后，正在登录...')
     // if advance panel show, then use advance panel`s host and port for main
     if (showAdvancePanel) {
-      const host = document.getElementsByClassName('hostIP')[0].value
-      const port = document.getElementsByClassName('hostPort')[0].value
       socket.emit('login', account, pw, host, port)
     } else {
       socket.emit('login', account, pw)
@@ -104,3 +108,19 @@ socket.on('data', function (data) {
 xterm.on('data', function (data) {
   socket.emit('data', data)
 })
+
+// when windows size change, fit xterm
+window.addEventListener('resize', function () {
+  fit(xterm)
+  socket.emit('resize', xterm.rows, xterm.cols)
+}, false)
+
+// xterm supported ie >= 11
+window.onload = function () {
+  var IEVersion = detectIE()
+  if (IEVersion && IEVersion < 11) {
+    alert('暂不支持当前浏览器使用，请更换其他高级浏览器以访问该网站。')
+    // ie11 do not support Template String
+    document.getElementsByTagName('body')[0].innerHTML = '<div style="text-align: center; color: black;"><h2><s>IE' + IEVersion + '</s></h2><p>' + window.navigator.userAgent + '</p></div>'
+  }
+}
