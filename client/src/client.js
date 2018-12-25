@@ -35,6 +35,7 @@ socket.on('standby', function (host, port) {
 
     xterm.clear()
     xterm.writeln('请输入用户名和密码进行登录。')
+    setLoginBtn(false)
   }
 })
 
@@ -87,6 +88,7 @@ loginBtn.onclick = function () {
 socket.on('invalidateIP', function () {
   xterm.writeln('登录失败，请检查IP地址或者端口是否设置正确。')
   xterm.writeln('可尝试在“高级”面板手动输入IP地址和端口号。')
+  setLoginBtn(false)
 })
 
 // server connect success
@@ -138,6 +140,7 @@ socket.on('reconnect_error', function (error) {
 })
 socket.on('reconnect_failed', function () {
   xterm.writeln('尝试重连一共10次，重连失败，请检查网络状况。')
+  setLoginBtn(false)
 })
 
 // when windows size change, fit xterm
