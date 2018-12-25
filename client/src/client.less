@@ -39,6 +39,37 @@ html, body {
       height: 24px;
       margin-left: 10px;
     }
+
+    .advance {
+      position: relative;
+      margin: 0 6px 0 12px;
+      color: rgb(0, 0, 238);
+      cursor: pointer;
+    }
+
+    .advance::after {
+      content: "\00BB";//特殊字符或形状
+      font-size: 18px;
+      position: absolute;
+      left: 26px;
+      bottom: 1px;
+    }
+
+    .extendPanel.advance::after {
+      content: "\00AB";
+    }
+
+    .advancePanel {
+      display: none;
+      margin-left: 15px;
+      height: 28px;
+      border: 1px solid #ddd;
+      line-height: 28px;
+      padding: 0 10px 0 5px;
+      border-radius: 2px;
+      background: #f7f7f7;
+      color: #333333;
+    }
   }
 }
 

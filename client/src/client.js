@@ -21,8 +21,28 @@ socket.on('connect', function () {
   xterm.writeln('请输入用户名和密码进行登录。')
 })
 
+socket.on('standby', function (host, port) {
+  const hostIP = document.getElementsByClassName('hostIP')[0]
+  const hostPort = document.getElementsByClassName('hostPort')[0]
+  hostIP.value = host
+  hostPort.value = port
+})
+
+// get advance panel click
+var showAdvancePanel = false
+const advanceBtn = document.getElementsByClassName('advance')[0]
+const advancePanel = document.getElementsByClassName('advancePanel')[0]
+advanceBtn.onclick = function () {
+  showAdvancePanel = !showAdvancePanel
+  advanceBtn.className = showAdvancePanel ? 'extendPanel advance' : 'advance'
+  advancePanel.style.display = showAdvancePanel ? 'inline-block' : 'none'
+}
+
 // get account and pw to login
 const loginBtn = document.getElementsByClassName('submit')[0]
+const setLoginBtn = function (disabled) {
+  loginBtn.disabled = disabled
+}
 loginBtn.onclick = function () {
   // login button blur to prevent repeat click
   loginBtn.blur()
@@ -33,39 +53,46 @@ loginBtn.onclick = function () {
     alert('请输入用户名和密码进行登录')
   } else {
     xterm.writeln('请稍后，正在登录...')
-    socket.emit('login', account, pw)
+    // if advance panel show, then use advance panel`s host and port for main
+    if (showAdvancePanel) {
+      const host = document.getElementsByClassName('hostIP')[0].value
+      const port = document.getElementsByClassName('hostPort')[0].value
+      socket.emit('login', account, pw, host, port)
+    } else {
+      socket.emit('login', account, pw)
+    }
   }
 }
 
 // wrong ip or port set
 socket.on('invalidateIP', function () {
-  xterm.writeln('请检查IP地址或者端口是否设置正确。')
-  xterm.writeln('可尝试在‘高级’面板手动输入IP地址和端口号。')
+  xterm.writeln('登录失败，请检查IP地址或者端口是否设置正确。')
+  xterm.writeln('可尝试在“高级”面板手动输入IP地址和端口号。')
 })
 
 // server connect success
 socket.on('login', function (success) {
   if (success) {
-    console.log('login success!')
     // when login set cursor blink and focus
     xterm.setOption('cursorBlink', true)
     xterm.focus()
     // disabled login button
-    loginBtn.disabled = true
+    setLoginBtn(true)
   }
 })
 
 // handle ssh connect event
 socket.on('SSH-ERROR', function (error) {
-  xterm.writeln('连接出现错误，请尝试重新登录。')
+  xterm.writeln('连接出现错误，请尝试重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。')
   xterm.writeln(error)
+  setLoginBtn(false)
 })
 socket.on('SSH-END', function () {
   xterm.writeln('连接已经断开。')
 })
 socket.on('SSH-CLOSE', function (hadError) {
-  xterm.writeln(hadError ? '连接因为出现错误而被关闭，请重新登录。' : '连接已经关闭，请重新登录。')
-  // todo 重新登录
+  xterm.writeln(hadError ? '连接因为出现错误而被关闭，请重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。' : '连接已经关闭，请重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。')
+  setLoginBtn(false)
 })
 
 // get socket server data

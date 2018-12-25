@@ -201,6 +201,33 @@ body {
   height: 24px;
   margin-left: 10px;
 }
+#head form .advance {
+  position: relative;
+  margin: 0 6px 0 12px;
+  color: #0000ee;
+  cursor: pointer;
+}
+#head form .advance::after {
+  content: "\BB";
+  font-size: 18px;
+  position: absolute;
+  left: 26px;
+  bottom: 1px;
+}
+#head form .extendPanel.advance::after {
+  content: "\AB";
+}
+#head form .advancePanel {
+  display: none;
+  margin-left: 15px;
+  height: 28px;
+  border: 1px solid #ddd;
+  line-height: 28px;
+  padding: 0 10px 0 5px;
+  border-radius: 2px;
+  background: #f7f7f7;
+  color: #333333;
+}
 #terminal {
   width: calc(100% - 12px);
   height: calc(100% - 32px);
