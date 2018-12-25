@@ -40,6 +40,7 @@ var xterm = {
   cols: '',
   rows: ''
 }
+// when client connect success, event 'connection' will be fired, whatever situation always, for example: socket.connect()
 io.on('connection', function (socket) {
   // custom event
   socket.on('standby', function (cols, rows) {
@@ -48,6 +49,7 @@ io.on('connection', function (socket) {
   })
   socket.emit('standby', HP.host, HP.port)
   socket.on('login', function (account, password, host, port) {
+    console.log('attempt to login!')
     // if advance panel show and advance option set host and port
     if (host !== undefined && port !== undefined) {
       if (!validator.isIP(host) || !validator.isPort(port)) {
@@ -94,6 +96,12 @@ io.on('connection', function (socket) {
         cols: xterm.cols,
         rows: xterm.rows
       }, function (err, stream) {
+        if (err) {
+          // when conn.end() fired, SSH event 'end' will be trigger
+          conn.end()
+          return
+        }
+
         // stream get server data, see node.js stream: http://nodejs.cn/api/stream.html
         stream.on('data', function (data) {
           socket.emit('data', data.toString('utf8'))
@@ -126,21 +134,27 @@ io.on('connection', function (socket) {
 
     // handle something error situation
     conn.on('error', function (error) {
-      // connect occur error
+      // connect occur error, fire sequence: error -> end -> close
       console.log('connect to server error!', error)
       socket.emit('SSH-ERROR', error)
+      // once upon disconnect, any next socket.emit() will lose, so when error occur, client will only receive SSH-ERROR event, and SSH-END event and SSH-CLOSE event will lose
+      socket.disconnect(true)
     })
     conn.on('end', function () {
       // connect end, fire sequence: end -> close
       // when call conn.end(), the 'end' event will be trigger
       console.log('connect to server end!')
       socket.emit('SSH-END')
+      // once upon disconnect, any next socket.emit() will lose, so when end occur, client will only receive SSH-END event, and SSH-CLOSE event will lose
+      socket.disconnect(true)
     })
     conn.on('close', function (hadError) {
       // connect close, fire sequence: end -> close
       // when call conn.end(), the 'close' event will be trigger, if this was due to error, hadError will be set to true
       console.log('connect to server close!', hadError)
       socket.emit('SSH-CLOSE', hadError)
+      // once upon disconnect, any next socket.emit() will lose, so maybe SSH-CLOSE event will always lose
+      socket.disconnect(true)
     })
     conn.on('keyboard-interactive', function (name, instructions, instructionsLang, prompts, finish) {
       // server asking for a keyboard interactive

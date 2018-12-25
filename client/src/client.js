@@ -15,19 +15,27 @@ xterm.setOption('scrollback', 10000)
 fit(xterm)
 
 // connect to socket
-const socket = io()
+const socket = io({
+  reconnectionAttempts: 10
+})
+// whatever that upon connect success, event 'connect' will be fired, for example: socket.connect()
 socket.on('connect', function () {
   // use for ssh connected shell
   socket.emit('standby', xterm.cols, xterm.rows)
-  xterm.clear()
-  xterm.writeln('请输入用户名和密码进行登录。')
 })
 
+var reconnect = false
 socket.on('standby', function (host, port) {
-  const hostIP = document.getElementsByClassName('hostIP')[0]
-  const hostPort = document.getElementsByClassName('hostPort')[0]
-  hostIP.value = host
-  hostPort.value = port
+  // when socket.connect(), event 'connect' will be fired, and client will also receive event 'standby', but reconnect we hope not clear screen
+  if (!reconnect) {
+    const hostIP = document.getElementsByClassName('hostIP')[0]
+    const hostPort = document.getElementsByClassName('hostPort')[0]
+    hostIP.value = host
+    hostPort.value = port
+
+    xterm.clear()
+    xterm.writeln('请输入用户名和密码进行登录。')
+  }
 })
 
 // get advance panel click
@@ -54,6 +62,10 @@ loginBtn.onclick = function () {
   if (!account || !pw) {
     alert('请输入用户名和密码进行登录')
   } else {
+    // get socket whether is disconnected
+    const isDisconnected = reconnect = socket.disconnected
+    if (isDisconnected) socket.connect()
+
     const host = document.getElementsByClassName('hostIP')[0].value
     const port = document.getElementsByClassName('hostPort')[0].value
 
@@ -65,6 +77,9 @@ loginBtn.onclick = function () {
     } else {
       socket.emit('login', account, pw)
     }
+
+    // disabled login button
+    setLoginBtn(true)
   }
 }
 
@@ -78,21 +93,26 @@ socket.on('invalidateIP', function () {
 socket.on('login', function (success) {
   if (success) {
     // when login set cursor blink and focus
+    xterm.clear()
     xterm.setOption('cursorBlink', true)
     xterm.focus()
-    // disabled login button
-    setLoginBtn(true)
   }
 })
 
 // handle ssh connect event
 socket.on('SSH-ERROR', function (error) {
-  xterm.writeln('连接出现错误，请尝试重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。')
-  xterm.writeln(error)
+  xterm.writeln('连接出现错误，请尝试重新登录。')
+  if (error && error.level === 'client-authentication') {
+    xterm.writeln('校验失败：错误的用户名或者密码。')
+  } else {
+    xterm.writeln('请检查主机IP地址与端口号是否有效。')
+    xterm.writeln('错误信息：' + JSON.stringify(error))
+  }
   setLoginBtn(false)
 })
 socket.on('SSH-END', function () {
-  xterm.writeln('连接已经断开。')
+  xterm.writeln('连接已经断开。请重新登录。')
+  setLoginBtn(false)
 })
 socket.on('SSH-CLOSE', function (hadError) {
   xterm.writeln(hadError ? '连接因为出现错误而被关闭，请重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。' : '连接已经关闭，请重新登录。如多次无法登录，请检查主机IP地址与端口号是否有效。')
@@ -107,6 +127,17 @@ socket.on('data', function (data) {
 // post socket client data to server
 xterm.on('data', function (data) {
   socket.emit('data', data)
+})
+
+// handle socket connect error situation
+socket.on('reconnecting', function (attemptNumber) {
+  xterm.writeln('请检查网络情况，尝试重连次数：' + attemptNumber)
+})
+socket.on('reconnect_error', function (error) {
+  xterm.writeln('尝试重连失败：' + error.message)
+})
+socket.on('reconnect_failed', function () {
+  xterm.writeln('尝试重连一共10次，重连失败，请检查网络状况。')
 })
 
 // when windows size change, fit xterm
