@@ -106,6 +106,8 @@ socket.on('SSH-ERROR', function (error) {
   xterm.writeln('连接出现错误，请尝试重新登录。')
   if (error && error.level === 'client-authentication') {
     xterm.writeln('校验失败：错误的用户名或者密码。')
+  } else if (error && error.level === 'client-timeout') {
+    xterm.writeln('错误信息：连接超时，请检查网络或服务器状态。')
   } else {
     xterm.writeln('请检查主机IP地址与端口号是否有效。')
     xterm.writeln('错误信息：' + JSON.stringify(error))
