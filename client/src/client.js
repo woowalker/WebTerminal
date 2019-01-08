@@ -72,12 +72,9 @@ loginBtn.onclick = function () {
 
     xterm.writeln('尝试连接到：' + host + ' 端口：' + port)
     xterm.writeln('请稍后，正在登录...')
-    // if advance panel show, then use advance panel`s host and port for main
-    if (showAdvancePanel) {
-      socket.emit('login', account, pw, host, port)
-    } else {
-      socket.emit('login', account, pw)
-    }
+
+    // use advance panel`s host and port for main
+    socket.emit('login', account, pw, host, port)
 
     // disabled login button
     setLoginBtn(true)
@@ -87,7 +84,7 @@ loginBtn.onclick = function () {
 // wrong ip or port set
 socket.on('invalidateIP', function () {
   xterm.writeln('登录失败，请检查IP地址或者端口是否设置正确。')
-  xterm.writeln('可尝试在“高级”面板手动输入IP地址和端口号。')
+  xterm.writeln('可打开“高级”面板手动输入IP地址和端口号。')
   setLoginBtn(false)
 })
 

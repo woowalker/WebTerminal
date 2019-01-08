@@ -8,6 +8,9 @@ var server = require('http').Server(app)
 var io = require('socket.io')(server, {serveClient: false})
 var SSH = require('ssh2').Client
 
+// cookie
+var cookieParser = require('cookie-parser')
+
 // config
 var config = require('../config')
 var nodeRoot = path.dirname(require.main.filename)
@@ -18,20 +21,16 @@ var validator = require('validator')
 
 // express option
 app.use(express.static(publicPath))
+app.use(cookieParser())
 
 // hide something about server information
 app.disable('x-powered-by')
 
 // match http url
-var HP = {
-  host: config.ssh.host,
-  port: config.ssh.port
-}
 app.get('/:host?', function (req, res) {
   // validator String only, otherwise will always occur error
-  HP.host = validator.isIP(req.params.host + '') && req.params.host
-  HP.port = req.query.port ? (validator.isPort(req.query.port + '') ? req.query.port : false) : config.ssh.port
-
+  res.cookie('host', validator.isIP(req.params.host + '') ? req.params.host : config.ssh.host, {maxAge: 60000}) // set cookie expire time in million seconds
+  res.cookie('port', req.query.port && validator.isPort(req.query.port + '') ? req.query.port : config.ssh.port, {maxAge: 60000})
   res.sendFile(publicPath + '/index.html')
 })
 
@@ -42,25 +41,30 @@ var xterm = {
 }
 // when client connect success, event 'connection' will be fired, whatever situation always, for example: socket.connect()
 io.on('connection', function (socket) {
+  // emit cookie host and port
+  var cookies = socket.request.headers.cookie, cookieHost = config.ssh.host, cookiePort = config.ssh.port
+  if (cookies) {
+    cookies = cookies.split(';')
+    for (var i = 0, j = cookies.length; i < j; i++) {
+      if (cookies[i].indexOf('host') !== -1) {
+        cookieHost = cookies[i].split('=')[1].trim()
+      }
+      if (cookies[i].indexOf('port') !== -1) {
+        cookiePort = cookies[i].split('=')[1].trim()
+      }
+    }
+  }
+  socket.emit('standby', cookieHost, cookiePort)
   // custom event
   socket.on('standby', function (cols, rows) {
     xterm.cols = cols
     xterm.rows = rows
   })
-  socket.emit('standby', HP.host, HP.port)
   socket.on('login', function (account, password, host, port) {
-    console.log('attempt to login!')
-    // if advance panel show and advance option set host and port
-    if (host !== undefined && port !== undefined) {
-      if (!validator.isIP(host) || !validator.isPort(port)) {
-        socket.emit('invalidateIP')
-        return
-      }
-    } else {
-      if (!HP.host || !HP.port) {
-        socket.emit('invalidateIP')
-        return
-      }
+    console.log('attempt to login, host:', host, ';port:', port)
+    if (!validator.isIP(host) || !validator.isPort(port)) {
+      socket.emit('invalidateIP')
+      return
     }
 
     // get ssh2 to login
@@ -163,8 +167,8 @@ io.on('connection', function (socket) {
 
     // connect to server
     conn.connect({
-      host: host ? host : HP.host,
-      port: port ? port : HP.port,
+      host: host,
+      port: port,
       username: account,
       password: password,
       tryKeyboard: config.ssh.tryKeyboard,

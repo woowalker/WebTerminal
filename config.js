@@ -4,7 +4,7 @@ module.exports = {
     port: 8090
   },
   ssh: {
-    host: null,
+    host: '',
     port: 22,
     tryKeyboard: true,
     keepaliveInterval: 120000,
